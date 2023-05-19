@@ -23,7 +23,7 @@ class ROPNet(nn.Module):
         self.args = args
         self.N1 = 448
         self.use_ppf = args.use_ppf
-        self.cg= CGModule(in_dim=3, gn=False)
+        self.cg = CGModule(in_dim=3, gn=False)
         self.tfmr = TFMRModule(args)
 
     def forward(self, src, tgt, num_iter=1, train=False):
@@ -63,6 +63,7 @@ class ROPNet(nn.Module):
         # 获取点云切分获得索引
         batch_num, point_num, xyz = src_t.shape
         batch_indices_list = []
+        batch_weight_list = []
         for b in range(batch_num):
             src_t_batch = src_t[b:b+1, :, :]
             src_t_x = src_t_batch[:, :, 0:1]
@@ -72,39 +73,47 @@ class ROPNet(nn.Module):
             y_median = float(torch.median(src_t_y).data)
             z_median = float(torch.median(src_t_z).data)
             split_indices_list = []
-            condition_1 = torch.logical_and((src_t_batch[:, :, 0] >= x_median), (src_t_batch[:, :, 1] > y_median))
+            weight_list = []
+            # condition_1 = torch.logical_and((src_t_batch[:, :, 0] >= x_median), (src_t_batch[:, :, 1] > y_median))
+            condition_1 = src_t_batch[:, :, 2] >= z_median
             split_indices = torch.nonzero(condition_1)[:, 1]
             if split_indices.shape[0] < self.args.train_N1:
                 split_indices = update_split_indices(split_indices, self.args.train_N1, condition_1)
             split_indices_list.append(split_indices)
+            weight_list.append(split_indices.shape[0] / src_t_batch.shape[1])
 
-            condition_2 = torch.logical_and((src_t_batch[:, :, 0] < x_median), (src_t_batch[:, :, 1] >= y_median))
+            # condition_2 = torch.logical_and((src_t_batch[:, :, 0] < x_median), (src_t_batch[:, :, 1] >= y_median))
+            condition_2 = src_t_batch[:, :, 2] < z_median
             split_indices = torch.nonzero(condition_2)[:, 1]
             if split_indices.shape[0] < self.args.train_N1:
                 split_indices = update_split_indices(split_indices, self.args.train_N1, condition_2)
             split_indices_list.append(split_indices)
+            weight_list.append(split_indices.shape[0] / src_t_batch.shape[1])
 
-            condition_3 = torch.logical_and((src_t_batch[:, :, 0] > x_median), (src_t_batch[:, :, 1] <= y_median))
-            split_indices = torch.nonzero(condition_3)[:, 1]
-            if split_indices.shape[0] < self.args.train_N1:
-                split_indices = update_split_indices(split_indices, self.args.train_N1, condition_3)
-            split_indices_list.append(split_indices)
-
-            condition_4 = torch.logical_and((src_t_batch[:, :, 0] <= x_median), (src_t_batch[:, :, 1] < y_median))
-            split_indices = torch.nonzero(condition_4)[:, 1]
-            if split_indices.shape[0] < self.args.train_N1:
-                split_indices = update_split_indices(split_indices, self.args.train_N1, condition_4)
-            split_indices_list.append(split_indices)
             batch_indices_list.append(split_indices_list)
+            batch_weight_list.append(weight_list)
+
+            # condition_3 = torch.logical_and((src_t_batch[:, :, 0] > x_median), (src_t_batch[:, :, 1] <= y_median))
+            # split_indices = torch.nonzero(condition_3)[:, 1]
+            # if split_indices.shape[0] < self.args.train_N1:
+            #     split_indices = update_split_indices(split_indices, self.args.train_N1, condition_3)
+            # split_indices_list.append(split_indices)
+            #
+            # condition_4 = torch.logical_and((src_t_batch[:, :, 0] <= x_median), (src_t_batch[:, :, 1] < y_median))
+            # split_indices = torch.nonzero(condition_4)[:, 1]
+            # if split_indices.shape[0] < self.args.train_N1:
+            #     split_indices = update_split_indices(split_indices, self.args.train_N1, condition_4)
+            # split_indices_list.append(split_indices)
+            # batch_indices_list.append(split_indices_list)
 
         R_batch_list = []
         T_batch_list = []
         similarity_max_inds_batch_list = []
-        for b, indices in enumerate(batch_indices_list):
+        for b, (indices, weight) in enumerate(zip(batch_indices_list, batch_weight_list)):
             R_split_list = []
             T_split_list = []
             similarity_max_inds_split_list = []
-            for i in indices:
+            for i, w in zip(indices, weight):
                 src_t_split = src_t[b:b+1, i, :].detach()
                 src_split, tgt_corr_split, icp_weights_split, similarity_max_inds_split = \
                     self.tfmr(src=src_t_split,
@@ -123,8 +132,15 @@ class ROPNet(nn.Module):
                 R_split_list.append(R_split)
                 T_split_list.append(T_split)
                 similarity_max_inds_split_list.append(i[similarity_max_inds_split])
-            R_batch = torch.mean(torch.stack(R_split_list), dim=0)
-            T_batch = torch.mean(torch.stack(T_split_list), dim=0)
+            # R_batch = torch.mean(torch.stack(R_split_list), dim=0)
+            # T_batch = torch.mean(torch.stack(T_split_list), dim=0)
+            # 加权平均
+            R_batch = weight[0] * R_split_list[0] + weight[1] * R_split_list[1]
+            T_batch = weight[0] * T_split_list[0] + weight[1] * T_split_list[1]
+            # print('R_batch:', R_batch)
+            # print('R_split_list:', R_split_list)
+            # print('T_batch:', T_batch)
+            # print('T_split_list:', T_split_list)
             similarity_max_inds_batch = torch.stack(similarity_max_inds_split_list, dim=0).reshape(1, -1)
             R_batch_list.append(R_batch)
             T_batch_list.append(T_batch)

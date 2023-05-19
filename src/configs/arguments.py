@@ -41,6 +41,9 @@ def config_params():
                         help='')
     parser.add_argument('--test_top_prob', type=float, default=0.4,
                         help='')
+    parser.add_argument('--load_checkpoint', type=str, default='./checkpoint/min_loss.pth', # 载入预训练模型的参数
+                        help='')
+
     # logs 日志
     parser.add_argument('--resume', default='',
                         help='the path to save training logs and checkpoints')    # 保存训练日志和检查点的路径

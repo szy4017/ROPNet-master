@@ -220,6 +220,13 @@ def main():
         optimizer.load_state_dict(checkpoint['optimizer'])
         epoch = checkpoint['epoch']
 
+    if args.load_checkpoint:
+        checkpoint = torch.load(args.load_checkpoint, map_location=torch.device('cpu'))
+        model_dict = model.state_dict()
+        pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict}
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,
                                                                      T_0=40,
                                                                      T_mult=2,
