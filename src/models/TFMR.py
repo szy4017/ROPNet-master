@@ -111,19 +111,25 @@ class OverlapAttention(nn.Module):
         super(OverlapAttention, self).__init__()
         self.overlap_attention1 = OverlapAttentionBlock(dim)
         self.overlap_attention2 = OverlapAttentionBlock(dim)
-        self.overlap_attention3 = OverlapAttentionBlock(dim)
-        self.overlap_attention4 = OverlapAttentionBlock(dim)
+        # self.overlap_attention3 = OverlapAttentionBlock(dim)
+        # self.overlap_attention4 = OverlapAttentionBlock(dim)
+        # self.conv_fuse = nn.Sequential(
+        #     nn.Conv1d(dim*4, dim*4, kernel_size=1, bias=False),
+        #     nn.GroupNorm(16, dim*4),
+        #     nn.LeakyReLU(negative_slope=0.2))
         self.conv_fuse = nn.Sequential(
-            nn.Conv1d(dim*4, dim*4, kernel_size=1, bias=False),
-            nn.GroupNorm(16, dim*4),
-            nn.LeakyReLU(negative_slope=0.2))
+            nn.Conv1d(dim*2, dim*2, kernel_size=1, bias=False),
+            nn.GroupNorm(16, dim*2),
+            nn.LeakyReLU(negative_slope=0.2)
+        )
 
     def forward(self, x, ol):
         x1 = self.overlap_attention1(x, ol)    # B C N
         x2 = self.overlap_attention2(x1, ol)
-        x3 = self.overlap_attention3(x2, ol)
-        x4 = self.overlap_attention4(x3, ol)
-        x = torch.cat([x1, x2, x3, x4], dim=1)
+        # x3 = self.overlap_attention3(x2, ol)
+        # x4 = self.overlap_attention4(x3, ol)
+        # x = torch.cat([x1, x2, x3, x4], dim=1)
+        x = torch.cat([x1, x2], dim=1)
         x = self.conv_fuse(x)
         return x
 

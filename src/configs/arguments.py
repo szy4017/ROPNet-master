@@ -70,7 +70,7 @@ def train_config_params():                                                 # 训
                         help='Neighborhood radius for computing pointnet features')        # 计算pintnet特征的邻域半径：0.3
     parser.add_argument('--num_neighbors', type=int, default=16, metavar='N',
                         help='Max num of neighbors to use')
-    parser.add_argument('--feat_dim', type=int, default=192,
+    parser.add_argument('--feat_dim', type=int, default=192*2,
                         help='Feature dimension (to compute distances on). '                       
                              'Other numbers will be scaled accordingly')            # 特征尺寸（用于计算距离）其他数字将相应缩放
     args = parser.parse_args()
@@ -83,7 +83,7 @@ def eval_config_params():
                         help='Neighborhood radius for computing pointnet features')       # 计算pointnet特征的邻域半径
     parser.add_argument('--num_neighbors', type=int, default=16, metavar='N',
                         help='Max num of neighbors to use')                               # 要使用的最大邻居数
-    parser.add_argument('--feat_dim', type=int, default=192,
+    parser.add_argument('--feat_dim', type=int, default=192*2,
                         help='Feature dimension (to compute distances on)')               # 特征尺寸（用于计算距离）
     parser.add_argument('--checkpoint', default='',
                         help='the path to the trained checkpoint')                        # 通往训练checkpoint的路径

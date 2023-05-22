@@ -223,7 +223,7 @@ def main():
     if args.load_checkpoint:
         checkpoint = torch.load(args.load_checkpoint, map_location=torch.device('cpu'))
         model_dict = model.state_dict()
-        pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict}
+        pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict and 'tfmr' not in k}
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
 
