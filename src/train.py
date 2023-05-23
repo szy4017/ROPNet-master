@@ -273,7 +273,9 @@ def main():
                                       "min_rot_error.pth")
             torch.save(model.state_dict(), saved_path)
             test_min_rot_error = test_rot_error
-
+        saved_path = os.path.join(checkpoints_path,
+                                  "epoch_{}.pth".format(epoch))
+        torch.save(model.state_dict(), saved_path)
         scheduler.step()
 
 
