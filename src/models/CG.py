@@ -92,6 +92,8 @@ class CGModule(nn.Module):
                                    cls=True)
         self.decoder_qt = MLPs(in_dim=1024,
                                mlps=[512, 512, 256, 7])
+        self.decoder_qt_dif = MLPs(in_dim=2048,
+                                   mlps=[1024, 512, 256, 7])
 
 
 
@@ -135,6 +137,11 @@ class CGModule(nn.Module):
         concat = torch.cat((g_x, g_y), dim=1)     # (8,1024)torch.cat是将两个张量（tensor）拼接在一起，cat是concatenate的意思，即拼接，联系在一起
         # print(concat.shape)
 
+        # 对encoder的特征进行差分计算
+        diff_x_y = g_x - g_y
+        diff_y_x = g_y - g_x
+        diff_concat = torch.cat((diff_x_y, diff_y_x), dim=1)
+
 
         # b, c, n = x.shape
         # print(x.shape)
@@ -154,7 +161,8 @@ class CGModule(nn.Module):
 
 
         # regression initial alignment  初始对齐
-        out = self.decoder_qt(concat)     # [8,7]
+        # out = self.decoder_qt(concat)     # [8,7]
+        out = self.decoder_qt_dif(torch.cat((concat, diff_concat), dim=1))
         batch_t, batch_quat = out[:, :3], out[:, 3:] / (
                 torch.norm(out[:, 3:], dim=1, keepdim=True) + 1e-8)      # batch_t(8,3)  batch_quat(8,4)  torch.norm求范数函数input:输入tensor类型的数据，p:指定的范数默认为p=‘fro’，计算矩阵的Frobenius norm (Frobenius 范数)，就是矩阵A各项元素的绝对值平方的总和，dim:指定在哪个维度进行，如果不指定，则是在所有维度进行计算，keepdim:True or False，如果True，则保留dim指定的维度，False则不保留
         batch_R = batch_quat2mat(batch_quat)        # batch_quat(8,4),batch_R(8,3,3),batch_quat2mat四元数转旋转矩阵

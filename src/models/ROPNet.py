@@ -240,7 +240,7 @@ class ROPNet(nn.Module):
         if self.training:
             src_ol2 = gather_points(src_raw, similarity_max_inds)
         else:
-            src_ol2 = gather_points(src_ol1, similarity_max_inds)    # (8,268,3)
+            src_ol2 = gather_points(src_raw, similarity_max_inds)    # (8,268,3)
 
         results['pred_Ts'] = pred_Ts
         results['pred_src'] = pred_src

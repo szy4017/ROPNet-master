@@ -61,7 +61,7 @@ def config_params():
 def train_config_params():                                                 # 训练配置参数
     parser = argparse.ArgumentParser(parents=[config_params()])
     parser.add_argument('--seed', type=int, default=1234)                  # 随机种子
-    parser.add_argument('--epoches', type=int, default=600)                # 训练次数：600
+    parser.add_argument('--epoches', type=int, default=50)                # 训练次数：50
     parser.add_argument('--batchsize', type=int, default=8)                # 一次训练所选取的样本数，每一次输入的4个元素，训练一遍需要输入Size/batchS
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--lr', type=float, default=0.0001,

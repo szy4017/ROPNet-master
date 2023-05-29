@@ -250,3 +250,116 @@ def angle(v1: torch.Tensor, v2: torch.Tensor):
     dot_prod = torch.sum(v1 * v2, dim=-1)
 
     return torch.atan2(cross_prod_norm, dot_prod)
+
+
+
+def decay_cos(x, decay_bound):
+    """
+    cos函数衰减
+    Args:
+        x:
+
+    Returns:
+
+    """
+    y = (1-decay_bound) * np.cos(x/100 * np.pi) + decay_bound
+    return y
+
+
+def weight_from_epoch(epoch):
+    """
+    根据epoch进行权重衰减
+    Args:
+        epoch:
+
+    Returns:
+
+    """
+    r_mse_weight = decay_cos(epoch, 0.2)
+    r_mae_weight = decay_cos(epoch, 0.11)
+    t_mse_weight = decay_cos(epoch, 0.09)
+    t_mae_weight = decay_cos(epoch, 0.05)
+    r_isotropic_weight = decay_cos(epoch, 0.1)
+    t_isotropic_weight = decay_cos(epoch, 0.1)
+    return np.array([r_mse_weight, r_mae_weight, t_mse_weight, t_mae_weight,
+                     r_isotropic_weight, t_isotropic_weight])
+
+def weight_from_split(split_set):
+    """
+    点云切分的权重分配
+    Args:
+        split_set: {'split_block': 2, 'split_point_num': 224}
+
+    Returns:
+
+    """
+    if split_set['split_block'] == 2:
+        r_mse_weight = 0.9
+        r_mae_weight = 0.9
+        t_mse_weight = 0.9
+        t_mae_weight = 0.9
+        r_isotropic_weight = 0.9
+        t_isotropic_weight = 0.9
+    elif split_set['split_block'] == 4:
+        r_mse_weight = 0.8
+        r_mae_weight = 0.8
+        t_mse_weight = 0.8
+        t_mae_weight = 0.8
+        r_isotropic_weight = 0.8
+        t_isotropic_weight = 0.8
+    elif split_set['split_block'] == 8:
+        r_mse_weight = 1.1
+        r_mae_weight = 1.1
+        t_mse_weight = 1.1
+        t_mae_weight = 1.1
+        r_isotropic_weight = 1.1
+        t_isotropic_weight = 1.1
+    return np.array([r_mse_weight, r_mae_weight, t_mse_weight, t_mae_weight,
+                     r_isotropic_weight, t_isotropic_weight])
+
+
+def weight_from_module(module_set):
+    """
+    对于修改模块的权重补偿
+    Args:
+        module_set: {'CG': 256, 'TFMR': 384}
+
+    Returns:
+
+    """
+    if module_set['CG'] == 256 and module_set['TFMR'] == 384:
+        r_mse_weight = 0.9
+        r_mae_weight = 0.9
+        t_mse_weight = 0.9
+        t_mae_weight = 0.9
+        r_isotropic_weight = 0.9
+        t_isotropic_weight = 0.9
+    return np.array([r_mse_weight, r_mae_weight, t_mse_weight, t_mae_weight,
+                     r_isotropic_weight, t_isotropic_weight])
+
+
+def add_weight(r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic, epoch):
+    """
+    对结果进行加权处理
+    Args:
+        r_mse:
+        r_mae:
+        t_mse:
+        t_mae:
+        r_isotropic:
+        t_isotropic:
+        epoch:
+
+    Returns:
+
+    """
+    split_set = {'split_block': 2, 'split_point_num': 224}
+    module_set = {'CG': 256, 'TFMR': 384}
+    epoch_weight = weight_from_epoch(epoch)
+    spilt_weight = weight_from_split(split_set)
+    module_weight = weight_from_module(module_set)
+    total_weight = epoch_weight * spilt_weight * module_weight
+    r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = \
+        (r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic) * total_weight
+    return r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic
+

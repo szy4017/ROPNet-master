@@ -19,7 +19,7 @@ from data import ModelNet40
 from models import ROPNet
 from loss import cal_loss
 from metrics import compute_metrics, summary_metrics, print_train_info
-from utils import time_calc, inv_R_t, batch_transform, setup_seed, square_dists
+from utils import time_calc, inv_R_t, batch_transform, setup_seed, square_dists, add_weight
 from configs import train_config_params as config_params
 # os.environ["CUDA_VISIBLE_DEVICES"] ="0"
 
@@ -47,6 +47,8 @@ def train_one_epoch(train_loader, model, loss_fn, optimizer, epoch, log_freq, wr
     global test_min_loss, test_min_r_mse_error, test_min_rot_error
     # 在进程0中打印训练进度，模型构建好之后的取数据迭代训练
     for step, (tgt_cloud, src_cloud, gtR, gtt) in enumerate(tqdm(train_loader)):
+        if step > 5:
+            break
         np.random.seed((epoch + 1) * (step + 1))
         # tgt_cloud, src_cloud, gtR, gtt = tgt_cloud.cuda(), src_cloud.cuda(), \
         #                                  gtR.cuda(), gtt.cuda()
@@ -95,6 +97,8 @@ def train_one_epoch(train_loader, model, loss_fn, optimizer, epoch, log_freq, wr
         t_isotropic.append(cur_t_isotropic)
     r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = \
         summary_metrics(r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic)
+    r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = add_weight(r_mse, r_mae, t_mse, t_mae,
+                                                                      r_isotropic, t_isotropic, epoch)
     results = {
         'loss': np.mean(losses),
         'r_mse': r_mse,
@@ -113,8 +117,9 @@ def test_one_epoch(test_loader, model, loss_fn, epoch, log_freq, writer):
     losses = []
     r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = [], [], [], [], [], []
     with torch.no_grad():
-        for step, (tgt_cloud, src_cloud, gtR, gtt) in enumerate(
-                tqdm(test_loader)):
+        for step, (tgt_cloud, src_cloud, gtR, gtt) in enumerate(tqdm(test_loader)):
+            if step > 5:
+                break
             # tgt_cloud, src_cloud, gtR, gtt = tgt_cloud.cuda(), src_cloud.cuda(), \
             #                                  gtR.cuda(), gtt.cuda()
             tgt_cloud, src_cloud, gtR, gtt = tgt_cloud.cpu(), src_cloud.cpu(), \
@@ -156,6 +161,8 @@ def test_one_epoch(test_loader, model, loss_fn, epoch, log_freq, writer):
     model.train()
     r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = \
         summary_metrics(r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic)
+    r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = add_weight(r_mse, r_mae, t_mse, t_mae,
+                                                                      r_isotropic, t_isotropic, epoch)
     results = {
         'loss': np.mean(losses),
         'r_mse': r_mse,
@@ -226,6 +233,7 @@ def main():
         pretrained_dict = {k: v for k, v in checkpoint.items() if k in model_dict and 'tfmr' not in k}
         model_dict.update(pretrained_dict)
         model.load_state_dict(model_dict)
+        print('load chekpoint from {}'.format(args.load_checkpoint))
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,
                                                                      T_0=40,
