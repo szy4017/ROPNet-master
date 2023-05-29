@@ -47,8 +47,6 @@ def train_one_epoch(train_loader, model, loss_fn, optimizer, epoch, log_freq, wr
     global test_min_loss, test_min_r_mse_error, test_min_rot_error
     # 在进程0中打印训练进度，模型构建好之后的取数据迭代训练
     for step, (tgt_cloud, src_cloud, gtR, gtt) in enumerate(tqdm(train_loader)):
-        if step > 5:
-            break
         np.random.seed((epoch + 1) * (step + 1))
         # tgt_cloud, src_cloud, gtR, gtt = tgt_cloud.cuda(), src_cloud.cuda(), \
         #                                  gtR.cuda(), gtt.cuda()
@@ -100,7 +98,7 @@ def train_one_epoch(train_loader, model, loss_fn, optimizer, epoch, log_freq, wr
     r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = add_weight(r_mse, r_mae, t_mse, t_mae,
                                                                       r_isotropic, t_isotropic, epoch)
     results = {
-        'loss': np.mean(losses),
+        'loss': np.abs(np.mean(losses)),
         'r_mse': r_mse,
         'r_mae': r_mae,
         't_mse': t_mse,
@@ -118,8 +116,6 @@ def test_one_epoch(test_loader, model, loss_fn, epoch, log_freq, writer):
     r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = [], [], [], [], [], []
     with torch.no_grad():
         for step, (tgt_cloud, src_cloud, gtR, gtt) in enumerate(tqdm(test_loader)):
-            if step > 5:
-                break
             # tgt_cloud, src_cloud, gtR, gtt = tgt_cloud.cuda(), src_cloud.cuda(), \
             #                                  gtR.cuda(), gtt.cuda()
             tgt_cloud, src_cloud, gtR, gtt = tgt_cloud.cpu(), src_cloud.cpu(), \
@@ -164,7 +160,7 @@ def test_one_epoch(test_loader, model, loss_fn, epoch, log_freq, writer):
     r_mse, r_mae, t_mse, t_mae, r_isotropic, t_isotropic = add_weight(r_mse, r_mae, t_mse, t_mae,
                                                                       r_isotropic, t_isotropic, epoch)
     results = {
-        'loss': np.mean(losses),
+        'loss': np.abs(np.mean(losses)),
         'r_mse': r_mse,
         'r_mae': r_mae,
         't_mse': t_mse,
